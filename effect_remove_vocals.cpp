@@ -27,7 +27,6 @@ void AudioEffectRemoveVocals::update(void)
 {
 
 	audio_block_t *blocka, *blockb;
-	uint32_t *pa, *pb, *end;
 
 	blocka = receiveWritable(0);
 	blockb = receiveReadOnly(1);
@@ -39,31 +38,55 @@ void AudioEffectRemoveVocals::update(void)
 		release(blocka);
 		return;
 	}
-	
-	pa = (uint32_t *)(blocka->data);
-	pb = (uint32_t *)(blockb->data);
-	end = pa + AUDIO_BLOCK_SAMPLES;
 
+//TODO: Unroll Loops	
+#ifdef KINETISK	
+	uint32_t *pa, *pb, *end;
+	pa = (uint32_t*)blocka->data;
+	pb = (uint32_t*)blockb->data;
+	end = pa + AUDIO_BLOCK_SAMPLES/2;	
 	if (!enabled) {			
-	  //Todo: Optimize for Teensy 3.x
 		while (pa < end) {		
 			int16_t l,r;
-			int32_t s;		
-			l = (int) *pa;
-			r = (int) *pb++;
-			s = (l + r) / 2;
+			int16_t s;		
+			l = *pa;
+			r = *pb++;
+			s = signed_halving_add_16_and_16(l,r);
 			*pa++ = s ; //convert to mono
 		}
-	} else {	
-		//Todo: Optimize for Teensy 3.x
+	} else {		
 		while (pa < end) {		
 			int16_t l,r;
-			int32_t s;		
-			l = (int) *pa;
-			r = (int) *pb++;
-			s = (l - r) / 2; //add inverted right to left channel
+			int16_t s;		
+			l = *pa;
+			r = *pb++;			
+			s = signed_halving_subtract_16_and_16(l,r);
 			*pa++ = s ; 	
 		}
+#else
+	uint32_t *pa, *pb, *end;
+	pa = (uint32_t*)blocka->data;
+	pb = (uint32_t*)blockb->data;
+	end = pa + AUDIO_BLOCK_SAMPLES/2;	
+	if (!enabled) {			
+		while (pa < end) {		
+			int16_t l,r;
+			int16_t s;		
+			l = *pa;
+			r = *pb++;
+			s = ((int)(l + r)) / 2;
+			*pa++ = s ; //convert to mono
+		}
+	} else {			
+		while (pa < end) {		
+			int16_t l,r;
+			int16_t s;		
+			l = *pa;
+			r = *pb++;
+			s = ((int)(l - r)) / 2; //add inverted right to left channel			
+			*pa++ = s ; 	
+		}
+#endif	
 	}
 	transmit(blocka);
 	release(blocka);
