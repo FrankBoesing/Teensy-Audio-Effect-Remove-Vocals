@@ -1,4 +1,4 @@
-/* "Remove Vocals" Effect for Teensy Audio Library 
+/* "Remove Vocals" Effect for Teensy Audio Library
  * Copyright (c) 2016, Frank Bösing, f.boesing@gmx.de
  *
  *
@@ -39,55 +39,64 @@ void AudioEffectRemoveVocals::update(void)
 		return;
 	}
 
-//TODO: Unroll Loops	
-#ifdef KINETISK	
+
+#ifdef KINETISK
 	uint32_t *pa, *pb, *end;
+	uint32_t s1,s2,l,l1,r,r1;
 	pa = (uint32_t*)blocka->data;
 	pb = (uint32_t*)blockb->data;
-	end = pa + AUDIO_BLOCK_SAMPLES/2;	
-	if (!enabled) {			
-		while (pa < end) {		
-			int16_t l,r;
-			int16_t s;		
+	end = pa + AUDIO_BLOCK_SAMPLES / 2;
+
+	if (!enabled) {
+		//convert to mono
+		while (pa < end) {
 			l = *pa;
+			l1 = *pa + (sizeof(int));
 			r = *pb++;
-			s = signed_halving_add_16_and_16(l,r);
-			*pa++ = s ; //convert to mono
+			r1 = *pb++;
+			s1 = signed_halving_add_16_and_16(l,r);
+			s2 = signed_halving_add_16_and_16(l1,r1);
+			*pa++ = s1;
+			*pa++ = s2;
 		}
-	} else {		
-		while (pa < end) {		
-			int16_t l,r;
-			int16_t s;		
+	} else {
+		//add inverted right to left channel
+		while (pa < end) {
 			l = *pa;
-			r = *pb++;			
-			s = signed_halving_subtract_16_and_16(l,r);
-			*pa++ = s ; 	
-		}
-#else
-	uint32_t *pa, *pb, *end;
-	pa = (uint32_t*)blocka->data;
-	pb = (uint32_t*)blockb->data;
-	end = pa + AUDIO_BLOCK_SAMPLES/2;	
-	if (!enabled) {			
-		while (pa < end) {		
-			int16_t l,r;
-			int16_t s;		
-			l = *pa;
+			l1 = *pa + (sizeof(int));
 			r = *pb++;
-			s = ((int)(l + r)) / 2;
-			*pa++ = s ; //convert to mono
+			r1 = *pb++;
+			s1 = signed_halving_subtract_16_and_16(l,r);
+		  s2 = signed_halving_subtract_16_and_16(l1,r1);
+			*pa++ = s1;
+			*pa++ = s2;
 		}
-	} else {			
-		while (pa < end) {		
-			int16_t l,r;
-			int16_t s;		
-			l = *pa;
-			r = *pb++;
-			s = ((int)(l - r)) / 2; //add inverted right to left channel			
-			*pa++ = s ; 	
-		}
-#endif	
 	}
+
+#else
+
+	uint16_t *pa, *pb, *end;
+	int16_t l,r;
+	pa = (uint16_t*)blocka->data;
+	pb = (uint16_t*)blockb->data;
+	end = pa + AUDIO_BLOCK_SAMPLES;
+
+	if (!enabled) {
+		while (pa < end) {
+			l = *pa;
+			r = *pb++;
+			*pa++ = (l + r) / 2;//convert to mono
+		}
+	} else {
+		while (pa < end) {
+			l = *pa;
+			r = *pb++;
+			*pa++ = (l - r) / 2; //add inverted right to left channel
+		}
+	}
+
+#endif
+
 	transmit(blocka);
 	release(blocka);
 	release(blockb);
