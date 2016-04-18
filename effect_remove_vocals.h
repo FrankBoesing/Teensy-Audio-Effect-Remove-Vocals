@@ -31,7 +31,7 @@ class AudioEffectRemoveVocals : public AudioStream
 {
 public:
 	AudioEffectRemoveVocals() : AudioStream(2, inputQueueArray) { }	
-	void enable(bool e) { e = enabled; }
+	void enable(bool e) {  enabled = e; }
 	virtual void update(void);	
 private:
 	audio_block_t *inputQueueArray[2];
